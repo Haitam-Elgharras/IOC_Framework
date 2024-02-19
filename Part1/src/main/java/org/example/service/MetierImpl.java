@@ -1,11 +1,12 @@
 package org.example.service;
 
 import org.example.dao.IDao;
+import org.springframework.stereotype.Service;
+
 
 public class MetierImpl implements IMetier {
     private IDao dao;
 
-    // Injection de dépendance par le constructeur
     public MetierImpl(IDao dao) {
         this.dao = dao;
     }
