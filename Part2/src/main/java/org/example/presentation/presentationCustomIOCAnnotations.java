@@ -4,6 +4,7 @@ package org.example.presentation;
 import org.example.CustomIOCAnnotation.CustomAnnotationConfigApplicationContext;
 import org.example.customIOCXML.CustomApplicationContext;
 import org.example.service.IProductService;
+import org.example.service.ProductService;
 
 public class presentationCustomIOCAnnotations {
      public static void main(String[] args) {
@@ -11,8 +12,5 @@ public class presentationCustomIOCAnnotations {
             CustomApplicationContext context = new CustomAnnotationConfigApplicationContext("org.example");
             IProductService productService =  context.getBean(IProductService.class);
             System.out.println(productService.getAllProducts());
-
     }
-
-
 }

@@ -1,26 +1,22 @@
 package org.example.CustomIOCAnnotation;
 
+import org.example.CustomIOCAnnotation.interfaces.Autowired;
 import org.example.CustomIOCAnnotation.interfaces.Repository;
 import org.example.CustomIOCAnnotation.interfaces.Service;
 import org.example.customIOCXML.CustomApplicationContext;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
 
 public class CustomAnnotationConfigApplicationContext implements CustomApplicationContext {
     private Map<Class<?>, Object> beans = new HashMap<>();
+    private String basePackage;
 
     public CustomAnnotationConfigApplicationContext(String basePackage) {
-        try {
-            scanPackage(basePackage);
-            instantiateNoArgBeans();
-            instantiateArgBeans();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        this.basePackage = basePackage;
     }
 
     private void scanPackage(String basePackage) throws Exception {
@@ -54,23 +50,18 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
     }
 
 
-    private void instantiateNoArgBeans() throws Exception {
+    private void instantiateNoConstructorArgBeans() throws Exception {
         for (Class<?> classx : new ArrayList<>(beans.keySet())) {
             if (beans.get(classx) != null)
                 continue;
 
-            System.out.println(true);
 
             if (classx.getConstructors().length == 0) {
                 beans.put(classx, classx.newInstance());
-                // name of the class
-                System.out.println(classx.getName());
             } else {
                 for (Constructor<?> constructor : classx.getConstructors()) {
                     if (constructor.getParameterCount() == 0) {
                         beans.put(classx, constructor.newInstance());
-                        // name of the class
-                        System.out.println(classx.getName());
                         break;
                     }
                 }
@@ -78,7 +69,7 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
         }
     }
 
-    private void instantiateArgBeans() throws Exception {
+    private void instantiateCostructorArgBeans() throws Exception {
         for (Class<?> classx : new ArrayList<>(beans.keySet())) {
             if (beans.get(classx) == null) { // If the bean is not yet instantiated
                 for (Constructor<?> constructor : classx.getConstructors()) {
@@ -96,9 +87,6 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
                         }
                         if (allArgsFound) {
                             beans.put(classx, constructor.newInstance(args));
-                            // class name and the args
-                            System.out.println(classx.getName());
-                            Arrays.stream(args).forEach(System.out::println);
                             break;
                         }
                     }
@@ -109,25 +97,96 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
 
     private Object findBeanOfType(Class<?> type) {
         for (Object bean : beans.values()) {
-            if (bean != null && type.isInstance(bean)) {
+            if (type.isInstance(bean)) {
                 return bean;
             }
         }
         return null;
     }
 
-    public <T> T searchInterfaceImplementation(Class<T> beanInterface) {
-        for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
-            Class<?> beanClass = entry.getKey();
-            Object beanInstance = entry.getValue();
-            if (beanInterface.isAssignableFrom(beanClass)) {
-                return beanInterface.cast(beanInstance);
-            }
+    private void instantiateAutowiredBeans() throws Exception {
+        for (Class<?> classx : new ArrayList<>(beans.keySet())) {
+                for (Method method : classx.getMethods()) {
+                    if (method.isAnnotationPresent(Autowired.class) && method.getParameterCount() > 0) {
+                        Object[] args = new Object[method.getParameterCount()];
+                        Class<?>[] paramTypes = method.getParameterTypes();
+                        boolean allArgsFound = true;
+                        for (int i = 0; i < paramTypes.length; i++) {
+                            Object arg = findBeanOfType(paramTypes[i]);
+                            if (arg == null) {
+                                allArgsFound = false;
+                                break;
+                            }
+                            args[i] = arg;
+                            System.out.println("here");
+                        }
+                        if (allArgsFound) {
+                            Object instance = classx.newInstance();
+                            method.invoke(instance, args);
+                            System.out.println(method.getName());
+                            beans.put(classx, instance);
+                            break;
+                        }
+                    }
+                }
         }
+    }
+
+    public <T> T searchIntrImplConstrctor(Class<T> beanInterface) {
+        try{
+            scanPackage(basePackage);
+            instantiateNoConstructorArgBeans();
+            instantiateCostructorArgBeans();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        if(beans != null)
+            for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
+                Class<?> beanClass = entry.getKey();
+                Object beanInstance = entry.getValue();
+                if (beanInterface.isAssignableFrom(beanClass)) {
+                    return beanInterface.cast(beanInstance);
+                }
+            }
+        return null;
+    }
+
+    private <T> T searchIntrImplSetter(Class<T> beanInterface) {
+        try{
+            scanPackage(basePackage);
+            instantiateNoConstructorArgBeans();
+            instantiateAutowiredBeans();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        if(beans != null)
+            for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
+                Class<?> beanClass = entry.getKey();
+                Object beanInstance = entry.getValue();
+                if (beanInterface.isAssignableFrom(beanClass)) {
+                    return beanInterface.cast(beanInstance);
+                }
+            }
         return null;
     }
 
     public <T> T getBean(Class<T> beanInterface) {
-        return searchInterfaceImplementation(beanInterface);
+        T bean = searchIntrImplConstrctor(beanInterface);
+        if (bean != null) {
+            for (Constructor<?> constructor : bean.getClass().getConstructors()) {
+                for (Class<?> paramType : constructor.getParameterTypes()) {
+                    if (paramType.isInstance(bean)) {
+                        return bean;
+                    }
+                }
+            }
+        }
+        T beanS= searchIntrImplSetter(beanInterface);
+        System.out.println(beanS.getClass().getName());
+        return  beanS;
     }
+
+
 }

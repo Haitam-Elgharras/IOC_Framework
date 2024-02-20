@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.CustomIOCAnnotation.interfaces.Autowired;
 import org.example.CustomIOCAnnotation.interfaces.Service;
 import org.example.dao.ProductDao;
 import org.example.dao.entities.Product;
@@ -12,8 +13,14 @@ public class ProductService implements IProductService {
     private ProductDao productDao;
 
     // this is a constructor injection
-    public ProductService(ProductDao productDao) {
-        this.productDao = productDao;
+//    public ProductService(ProductDao productDao) {
+//        this.productDao = productDao;
+//    }
+
+    // setter injection
+    @Autowired
+    public void setProductDao(ProductDao pdao){
+        this.productDao=pdao;
     }
 
 
