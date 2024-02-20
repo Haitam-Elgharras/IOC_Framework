@@ -38,6 +38,32 @@ Spring offre également la possibilité de configurer les beans et leurs dépend
 
 Le projet est organisé en plusieurs commits, chacun se concentrant sur une partie spécifique de l'injection de dépendances. Chaque commit comprend des fichiers de présentation dans le package `presentation` pour illustrer l'utilisation des fonctionnalités implémentées.
 
+
+# Rapport - Partie 2: Injection de Dépendances avec Les Annotations.
+
+Ce rapport présente la deuxième partie du projet, se concentrant sur l'injection de dépendances en utilisant des annotations et la réflexion dans une application Java.
+
+## Contenu du Projet
+
+La partie 2 du projet explore différentes méthodes d'injection de dépendances, en mettant l'accent sur l'utilisation d'annotations telles que `@Autowired`, `@Service`, et `@Repository`, ainsi que sur la réflexion pour analyser et gérer les dépendances.
+
+### 1. Annotation `@Autowired` et Annotations de Service et Repository
+
+Les annotations `@Autowired`, `@Service`, et `@Repository` sont utilisées pour marquer les composants de l'application, indiquer les dépendances à injecter, et identifier les classes de service et de repository.
+
+### 2. Mécanismes d'Injection de Dépendances
+La classe `CustomAnnotationConfigApplicationContext` utilise la réflexion pour scanner les classes dans un package donné, identifier les composants annotés, et gérer l'instantiation des beans et l'injection de dépendances.
+
+#### a. Injection de Dépendances par Constructeur et par Setter
+Les dépendances peuvent être injectées soit par constructeur, soit par méthode setter, en fonction des annotations présentes dans les classes et des paramètres de leurs constructeurs et méthodes.
+
+#### b. Gestion des Dépendances par Annotations
+Les annotations telles que `@Autowired` sont analysées pour déterminer les dépendances à injecter, et la réflexion est utilisée pour localiser les beans correspondants et les fournir aux classes requises.
+
+## Structure du Projet
+
+La structure du projet reste organisée avec des packages distincts pour les composants, les interfaces, et les annotations. Chaque commit est associé à une fonctionnalité spécifique, avec des fichiers de présentation détaillant l'utilisation des annotations et des mécanismes d'injection de dépendances.
+
 ## Utilisation
 
 Le projet peut être cloné localement et exécuté pour explorer les différentes méthodes d'injection de dépendances mises en œuvre.
