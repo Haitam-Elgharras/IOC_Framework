@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans>
-
     <bean id="productDao" class="org.example.dao.ProductDaoImpl"/>
     <bean id="productService" class="org.example.service.ProductService">
-        <constructor-arg ref="productDao" type="org.example.dao.ProductDao"/>
+        <constructor-arg ref="productDao"/>
     </bean>
-
 </beans>

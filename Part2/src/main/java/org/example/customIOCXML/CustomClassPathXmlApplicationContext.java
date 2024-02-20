@@ -5,6 +5,7 @@ import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Unmarshaller;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,12 +22,12 @@ public class CustomClassPathXmlApplicationContext implements CustomApplicationCo
     private void initializeBeans() {
         try {
             File file = new File("src/main/resources/" + configXml);
-            JAXBContext jaxbContext = JAXBContext.newInstance(BeanConfig.class);
+            JAXBContext jaxbContext = JAXBContext.newInstance(BeansList.class);
             Unmarshaller unmarshaller = jaxbContext.createUnmarshaller();
-            BeanConfig beanConfig = (BeanConfig) unmarshaller.unmarshal(file);
+            BeansList beansList = (BeansList) unmarshaller.unmarshal(file);
 
             // First pass: Initialize beans without constructor arguments
-            for (BeanDefinition beanDefinition : beanConfig.getBeanDefinitions()) {
+            for (BeanDefinition beanDefinition : beansList.getBeansList()) {
                 if (beanDefinition.getConstructorArg() == null) {
                     Class<?> beanClass = Class.forName(beanDefinition.getClassName());
                     Object beanInstance = beanClass.getDeclaredConstructor().newInstance();
@@ -34,16 +35,55 @@ public class CustomClassPathXmlApplicationContext implements CustomApplicationCo
                 }
             }
 
-            // Second pass: Initialize beans with constructor arguments
-            for (BeanDefinition beanDefinition : beanConfig.getBeanDefinitions()) {
+            // less dynamic way to initialize beans with constructor arguments because it relies on the order of the interface
+//            for (BeanDefinition beanDefinition : beansList.getBeansList()) {
+//                if (beanDefinition.getConstructorArg() != null) {
+//                    Class<?> beanClass = Class.forName(beanDefinition.getClassName());
+//
+//                    Object constructorArgBean = beanMap.get(beanDefinition.getConstructorArg().getRef()); // Get the referenced bean
+//
+//                    Object beanInstance = beanClass.getConstructor(constructorArgBean.getClass().getInterfaces()[0])
+//                                                                                      .newInstance(constructorArgBean);
+//                    beanMap.put(beanDefinition.getId(), beanInstance);
+//                }
+//            }
+
+                // more dynamic way to initialize beans with constructor arguments
+
+            for (BeanDefinition beanDefinition : beansList.getBeansList()) {
                 if (beanDefinition.getConstructorArg() != null) {
                     Class<?> beanClass = Class.forName(beanDefinition.getClassName());
-                    Object constructorArgBean = beanMap.get(beanDefinition.getConstructorArg().getRef());
-                    Class<?> constructorArgType = Class.forName(beanDefinition.getConstructorArg().getType());
-                    Object beanInstance = beanClass.getConstructor(constructorArgType).newInstance(constructorArgBean);
+
+                    Object constructorArgBean = beanMap.get(beanDefinition.getConstructorArg().getRef()); // Get the referenced bean
+
+                    Constructor<?>[] constructors = beanClass.getConstructors();
+                    Object beanInstance = null;
+
+                    for (Constructor<?> constructor : constructors) {
+                        Class<?>[] paramTypes = constructor.getParameterTypes();
+                        for (Class<?> paramType : paramTypes) {
+                            if (paramType.isInstance(constructorArgBean)) {
+                                try {
+                                    beanInstance = constructor.newInstance(constructorArgBean);
+                                    break;
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                        if (beanInstance != null) {
+                            break;
+                        }
+                    }
+
+                    if (beanInstance == null) {
+                        throw new RuntimeException("No suitable constructor found for bean class " + beanClass.getName());
+                    }
+
                     beanMap.put(beanDefinition.getId(), beanInstance);
                 }
             }
+
         } catch (JAXBException | ReflectiveOperationException e) {
             e.printStackTrace();
             throw new RuntimeException("Failed to initialize beans from XML configuration.");

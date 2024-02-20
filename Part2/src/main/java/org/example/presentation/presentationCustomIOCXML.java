@@ -6,9 +6,9 @@ import org.example.service.IProductService;
 
 public class presentationCustomIOCXML {
     public static void main(String[] args) {
-        // Test framework for XML based IOC
-        CustomApplicationContext springContext = new CustomClassPathXmlApplicationContext("config.xml");
-        IProductService productService =  springContext.getBean(IProductService.class);
+        // Test framework for XML-based IOC
+        CustomApplicationContext Context = new CustomClassPathXmlApplicationContext("config.xml");
+        IProductService productService =  Context.getBean(IProductService.class);
         System.out.println(productService.getAllProducts());
     }
 }

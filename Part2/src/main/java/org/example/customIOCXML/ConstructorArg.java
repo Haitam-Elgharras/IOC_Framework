@@ -10,22 +10,7 @@ public class ConstructorArg {
     @XmlAttribute(name = "ref")
     private String ref;
 
-    @XmlAttribute(name = "type")
-    private String type;
-
     public String getRef() {
         return ref;
-    }
-
-    public void setRef(String ref) {
-        this.ref = ref;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
     }
 }

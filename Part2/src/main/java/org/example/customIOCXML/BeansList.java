@@ -10,11 +10,11 @@ import java.util.List;
 
 @XmlRootElement(name = "beans")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class BeanConfig {
+public class BeansList {
     @XmlElement(name = "bean")
     private List<BeanDefinition> beanDefinitions;
 
-    public List<BeanDefinition> getBeanDefinitions() {
+    public List<BeanDefinition> getBeansList() {
         return beanDefinitions;
     }
 
