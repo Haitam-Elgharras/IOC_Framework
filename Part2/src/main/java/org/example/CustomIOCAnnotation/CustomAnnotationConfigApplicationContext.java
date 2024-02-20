@@ -12,19 +12,18 @@ import java.util.*;
 
 public class CustomAnnotationConfigApplicationContext implements CustomApplicationContext {
     private Map<Class<?>, Object> beans = new HashMap<>();
-    private Map<Class<?>, Set<Class<?>>> dependencies = new HashMap<>();
 
     public CustomAnnotationConfigApplicationContext(String basePackage) {
         try {
             scanPackage(basePackage);
-            identifyDependencies();
-            instantiateBeans();
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+            instantiateNoArgBeans();
+            instantiateArgBeans();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void scanPackage(String basePackage) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    private void scanPackage(String basePackage) throws Exception {
         String basePath = basePackage.replace(".", "/");
         URL url = getClass().getClassLoader().getResource(basePath);
         if (url != null) {
@@ -35,73 +34,100 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
         }
     }
 
-    private void processDirectory(File directory, String basePackage) throws ClassNotFoundException, InstantiationException, IllegalAccessException {
+    private void processDirectory(File directory, String basePackage) throws Exception{
         for (File file : Objects.requireNonNull(directory.listFiles())) {
-            System.out.println(file.getName());
             if (file.isDirectory()) {
                 processDirectory(file, basePackage + "." + file.getName());
             } else if (file.getName().endsWith(".class")) {
                 String className = basePackage + "." + file.getName().replace(".class", "");
-                Class<?> clazz = Class.forName(className);
-                processClass(clazz);
+                Class<?> classx = Class.forName(className);
+                processClass(classx);
             }
         }
     }
 
 
-    private void processClass(Class<?> clazz) throws IllegalAccessException, InstantiationException {
-        if (clazz.isAnnotationPresent(Service.class) || clazz.isAnnotationPresent(Repository.class)) {
-            System.out.println(clazz.getName() + " is annotated");
-            beans.put(clazz, null); // Store the class first
+    private void processClass(Class<?> classx) {
+        if (classx.isAnnotationPresent(Service.class) || classx.isAnnotationPresent(Repository.class)) {
+            beans.put(classx, null); // Store the class first and not the instance
         }
     }
 
-    private void identifyDependencies() {
-        for (Class<?> clazz : beans.keySet()) {
-            Constructor<?>[] constructors = clazz.getConstructors();
-            if (constructors.length > 0) {
-                Class<?>[] parameterTypes = constructors[0].getParameterTypes();
-                Set<Class<?>> classDependencies = new HashSet<>(Arrays.asList(parameterTypes));
-                dependencies.put(clazz, classDependencies);
-            }
-        }
-    }
 
-    private void instantiateBeans() throws IllegalAccessException, InstantiationException {
-        for (Class<?> clazz : beans.keySet()) {
-            instantiateBean(clazz);
-        }
-    }
+    private void instantiateNoArgBeans() throws Exception {
+        for (Class<?> classx : new ArrayList<>(beans.keySet())) {
+            if (beans.get(classx) != null)
+                continue;
 
-    private void instantiateBean(Class<?> clazz) throws IllegalAccessException, InstantiationException {
-        if (beans.get(clazz) == null) {
-            Set<Class<?>> classDependencies = dependencies.get(clazz);
-            if (classDependencies != null) {
-                List<Object> dependencyInstances = new ArrayList<>();
-                for (Class<?> dependency : classDependencies) {
-                    Object dependencyInstance = beans.get(dependency);
-                    if (dependencyInstance == null) {
-                        instantiateBean(dependency); // Instantiate dependency first
-                        dependencyInstance = beans.get(dependency);
+            System.out.println(true);
+
+            if (classx.getConstructors().length == 0) {
+                beans.put(classx, classx.newInstance());
+                // name of the class
+                System.out.println(classx.getName());
+            } else {
+                for (Constructor<?> constructor : classx.getConstructors()) {
+                    if (constructor.getParameterCount() == 0) {
+                        beans.put(classx, constructor.newInstance());
+                        // name of the class
+                        System.out.println(classx.getName());
+                        break;
                     }
-                    dependencyInstances.add(dependencyInstance);
-                }
-                Constructor<?>[] constructors = clazz.getConstructors();
-                if (constructors.length > 0) {
-                    Constructor<?> constructor = constructors[0];
-                    Object instance = null;
-                    try {
-                        instance = constructor.newInstance(dependencyInstances.toArray());
-                    } catch (InvocationTargetException e) {
-                        throw new RuntimeException(e);
-                    }
-                    beans.put(clazz, instance);
                 }
             }
         }
     }
 
-    public <T> T getBean(Class<T> beanClass) {
-        return beanClass.cast(beans.get(beanClass));
+    private void instantiateArgBeans() throws Exception {
+        for (Class<?> classx : new ArrayList<>(beans.keySet())) {
+            if (beans.get(classx) == null) { // If the bean is not yet instantiated
+                for (Constructor<?> constructor : classx.getConstructors()) {
+                    if (constructor.getParameterCount() > 0) {
+                        Object[] args = new Object[constructor.getParameterCount()];
+                        Class<?>[] paramTypes = constructor.getParameterTypes();
+                        boolean allArgsFound = true;
+                        for (int i = 0; i < paramTypes.length; i++) {
+                            Object arg = findBeanOfType(paramTypes[i]);
+                            if (arg == null) {
+                                allArgsFound = false;
+                                break;
+                            }
+                            args[i] = arg;
+                        }
+                        if (allArgsFound) {
+                            beans.put(classx, constructor.newInstance(args));
+                            // class name and the args
+                            System.out.println(classx.getName());
+                            Arrays.stream(args).forEach(System.out::println);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private Object findBeanOfType(Class<?> type) {
+        for (Object bean : beans.values()) {
+            if (bean != null && type.isInstance(bean)) {
+                return bean;
+            }
+        }
+        return null;
+    }
+
+    public <T> T searchInterfaceImplementation(Class<T> beanInterface) {
+        for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
+            Class<?> beanClass = entry.getKey();
+            Object beanInstance = entry.getValue();
+            if (beanInterface.isAssignableFrom(beanClass)) {
+                return beanInterface.cast(beanInstance);
+            }
+        }
+        return null;
+    }
+
+    public <T> T getBean(Class<T> beanInterface) {
+        return searchInterfaceImplementation(beanInterface);
     }
 }

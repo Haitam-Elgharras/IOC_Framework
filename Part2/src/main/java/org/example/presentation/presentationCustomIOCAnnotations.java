@@ -7,9 +7,9 @@ import org.example.service.IProductService;
 
 public class presentationCustomIOCAnnotations {
      public static void main(String[] args) {
-         // Test framework for annotation based IOC
-            CustomApplicationContext springContext = new CustomAnnotationConfigApplicationContext("org.example");
-            IProductService productService =  springContext.getBean(IProductService.class);
+         // Test framework for annotation-based IOC
+            CustomApplicationContext context = new CustomAnnotationConfigApplicationContext("org.example");
+            IProductService productService =  context.getBean(IProductService.class);
             System.out.println(productService.getAllProducts());
 
     }
