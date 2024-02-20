@@ -7,6 +7,7 @@ import org.example.customIOCXML.CustomApplicationContext;
 
 import java.io.File;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.*;
@@ -104,7 +105,7 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
         return null;
     }
 
-    private void instantiateAutowiredBeans() throws Exception {
+    private void instantiateSetterAutowired() throws Exception {
         for (Class<?> classx : new ArrayList<>(beans.keySet())) {
                 for (Method method : classx.getMethods()) {
                     if (method.isAnnotationPresent(Autowired.class) && method.getParameterCount() > 0) {
@@ -156,7 +157,7 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
         try{
             scanPackage(basePackage);
             instantiateNoConstructorArgBeans();
-            instantiateAutowiredBeans();
+            instantiateSetterAutowired();
         }
         catch (Exception e){
             e.printStackTrace();
@@ -172,21 +173,97 @@ public class CustomAnnotationConfigApplicationContext implements CustomApplicati
         return null;
     }
 
-    public <T> T getBean(Class<T> beanInterface) {
-        T bean = searchIntrImplConstrctor(beanInterface);
-        if (bean != null) {
-            for (Constructor<?> constructor : bean.getClass().getConstructors()) {
-                for (Class<?> paramType : constructor.getParameterTypes()) {
-                    if (paramType.isInstance(bean)) {
-                        return bean;
+
+    private <T> T searchIntrImplField(Class<T> beanInterface) {
+        try {
+            scanPackage(basePackage);
+            instantiateNoConstructorArgBeans();
+            instantiateFieldAutowired();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        if (beans != null)
+            for (Map.Entry<Class<?>, Object> entry : beans.entrySet()) {
+                Class<?> beanClass = entry.getKey();
+                Object beanInstance = entry.getValue();
+                if (beanInterface.isAssignableFrom(beanClass)) {
+                    return beanInterface.cast(beanInstance);
+                }
+            }
+        return null;
+    }
+    private void instantiateFieldAutowired() {
+        for (Class<?> classx : new ArrayList<>(beans.keySet())) {
+            for (Field field : classx.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Autowired.class)) {
+                    Object bean = findBeanOfType(field.getType());
+                    if (bean != null) {
+                        try {
+                            if (!field.isAccessible()) {
+                                field.setAccessible(true);
+                            }
+                            field.set(beans.get(classx), bean);
+                        } catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
         }
-        T beanS= searchIntrImplSetter(beanInterface);
-        System.out.println(beanS.getClass().getName());
-        return  beanS;
+    }
+
+
+    public <T> T getBean(Class<T> beanInterface) {
+        T beanConstructor = searchIntrImplConstrctor(beanInterface);
+
+        // verify that the bean has a constructor has a constructor with a param that exits in the context
+        if (beanConstructor != null) {
+            for (Constructor<?> constructor : beanConstructor.getClass().getConstructors()) {
+                for (Class<?> paramType : constructor.getParameterTypes()) {
+                    for (Object bean : beans.values()) {
+                        if (paramType.isInstance(bean)) {
+                            return beanConstructor;
+                        }
+                    }
+                }
+            }
+        }
+
+        T beanSetter= searchIntrImplSetter(beanInterface);
+        if (beanSetter != null) {
+            for (Method method : beanSetter.getClass().getMethods()) {
+                if (method.isAnnotationPresent(Autowired.class) && method.getParameterCount() > 0) {
+                    for (Class<?> paramType : method.getParameterTypes()) {
+                        for (Object bean : beans.values()) {
+                            if (paramType.isInstance(bean)) {
+                                return beanSetter;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // doesn't need to check if the dependency is injected using field cause anyway the framework will return the bean
+        return searchIntrImplField(beanInterface);
+
+
+        // if the dependency is injected using field
+//        if (beanField != null) {
+//            for (Field field : beanField.getClass().getDeclaredFields()) {
+//                if (field.isAnnotationPresent(Autowired.class)) {
+//                    for (Object bean : beans.values()) {
+//                        if (field.getType().isInstance(bean)) {
+//                            return beanField;
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        // if not throw a bean not found exception
+//        throw new RuntimeException("Bean not found");
     }
 
 
 }
+
+

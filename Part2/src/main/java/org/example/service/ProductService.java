@@ -10,15 +10,16 @@ import java.util.List;
 @Service
 public class ProductService implements IProductService {
 
+    @Autowired
     private ProductDao productDao;
 
-    // this is a constructor injection
+//     this is a constructor injection
 //    public ProductService(ProductDao productDao) {
 //        this.productDao = productDao;
 //    }
 
     // setter injection
-    @Autowired
+//    @Autowired
     public void setProductDao(ProductDao pdao){
         this.productDao=pdao;
     }
